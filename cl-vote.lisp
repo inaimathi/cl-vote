@@ -3,10 +3,24 @@
 
 (define-handler (/) ()
   (with-html-output-to-string (s nil :prologue t :indent t)
-    (:html
-     (:head (:title "Vote"))
-     (:body (:p (:b "TODO - ")
-		"List existing papers in order of total upvotes by caballers, already read papers and the current reading schedule.")))))
+    (flet ((papers-list (papers)
+	     (htm (:ul (loop for p in papers
+			  for href = (gethash :link p)
+			  if href do (htm (:li (:a :href href (str (gethash :title p)))))
+			  else do (htm (:li (str (gethash :title p)))))))))
+      (htm
+       (:html
+	(:head (:title "Vote"))
+	(:body
+	 (:div
+	  (:h1 "Reading Schedule")
+	  (papers-list (get-scheduled-papers)))
+	 (:div
+	  (:h3 "Future Papers")
+	  (papers-list (get-future-papers)))
+	 (:div
+	  (:h3 "Past Papers")
+	  (papers-list (get-past-papers)))))))))
 
 (define-handler (api/vote :method :post :content-type "application/json") ()
   (list :todo "Submit a vote slate"))

@@ -5,6 +5,12 @@
    (merge-pathnames "cl-vote.base" (user-homedir-pathname))
    :in-memory? t))
 
+(defun hash (&rest k/v-pairs)
+  (let ((h (make-hash-table)))
+    (loop for (k v) on k/v-pairs by #'cddr
+       do (setf (gethash k h) v))
+    h))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; Users
 (defclass user ()
@@ -13,8 +19,16 @@
    (access-token :accessor access-token :initarg :access-token)
    (url :reader url :initarg :url)))
 
-(defmethod user-id ((u user))
+(defmethod qualified-name ((u user))
   (format nil "~(~a~):~a" (source u) (name u)))
+
+(defun get-or-create-user-id (name)
+  (or (first
+       (fact-base:for-all
+	`(?id :user ,name)
+	:in *public-data* :collect ?id))
+      (fact-base:insert-new!
+       *public-data* :user name)))
 
 (defun user-link (qualified-user-name)
   (destructuring-bind (site name) (cl-ppcre:split ":" qualified-user-name :limit 2)
@@ -26,7 +40,7 @@
 	    (htm (:a :href (format nil template name) :target "_BLANK" (str name)))
 	    (str name))))))
 
-(defun get-all-issues-from-github ()
+(defun fetch-all-issues-from-github ()
   (loop for paper in (loop for i from 1
 			for pg = (uiop:run-program
 				  (format nil "curl https://api.github.com/repos/CompSciCabal/SMRTYPRTY/issues?page=~a" i)
@@ -39,8 +53,8 @@
 		    (gethash "body" paper))
 		   (gethash "body" paper))))
 
-(defun get-papers-from-issues ()
-  (loop for (user title link body) in (get-all-issues-from-github)
+(defun submit-papers-from-issues! ()
+  (loop for (user title link body) in (fetch-all-issues-from-github)
      do (submit-paper! user title link)))
 
 (defun get-voted-papers ()
@@ -59,13 +73,35 @@
   (fact-base:insert! *public-data* (list user-id :vote-score score))
   nil)
 
-(defun submit-paper! (user-id paper-title paper-link)
+(defun submit-paper! (qualified-user-name paper-title paper-link)
   (let ((paper-id
 	 (fact-base:multi-insert!
 	  *public-data*
 	  `((:paper nil)
 	    (:title ,paper-title)
-	    (:link ,paper-link))))))
-  (fact-base:insert!
-   *public-data* (list user-id :submitted paper-id))
-  (list :id paper-id :title paper-title :link paper-link))
+	    (:link ,paper-link))))
+	(user-id (get-or-create-user-id qualified-user-name)))
+    (fact-base:insert! *public-data* (list user-id :submitted paper-id))
+    (list :id paper-id :title paper-title :link paper-link)))
+
+(defun get-scheduled-papers ()
+  (fact-base:for-all
+   (and (?id :paper nil) (?id :title ?title) (?id :link ?link)
+	(?id :scheduled ?date) (not (?id :read ?)))
+   :in *public-data*
+   :collect (hash :title (string-trim "\"'\"" ?title) :link ?link :id ?id :date ?date)))
+
+(defun get-past-papers ()
+  (fact-base:for-all
+   (and (?id :paper nil) (?id :title ?title) (?id :link ?link)
+	(?id :read ?date))
+   :in *public-data*
+   :collect (hash :title (string-trim "\"'\"" ?title) :link ?link :id ?id :date ?date)))
+
+(defun get-future-papers ()
+  (fact-base:for-all
+   (and (?id :paper nil)
+	(not (?id :read ?)) (not (?id :scheduled ?))
+	(?id :title ?title) (?id :link ?link))
+   :in *public-data*
+   :collect (hash :title (string-trim "\"'\"" ?title) :link ?link :id ?id)))
