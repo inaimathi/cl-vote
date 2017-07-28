@@ -1,5 +1,7 @@
 (in-package #:cl-vote)
 
+(defparameter +vote-total+ 5)
+
 (defparameter *public-data*
   (fact-base:base!
    (merge-pathnames "cl-vote.base" (user-homedir-pathname))
@@ -22,15 +24,31 @@
 (defmethod qualified-name ((u user))
   (format nil "~(~a~):~a" (source u) (name u)))
 
-(defun get-or-create-user-id (name)
+(defmethod get-or-create-user-id ((name string))
   (or (first
        (fact-base:for-all
 	`(?id :user ,name)
 	:in *public-data* :collect ?id))
       (fact-base:insert-new!
        *public-data* :user name)))
+(defmethod get-or-create-user-id ((u user))
+  (get-or-create-user-id (qualified-name u)))
 
-(defun user-link (qualified-user-name)
+(defmethod votes-remaining (fixme)
+  ;; Delete this once the user system is operational
+  +vote-total+)
+(defmethod votes-remaining ((u user))
+  (let ((user-id (get-or-create-user-id u)))
+    (apply
+     #'- +vote-total+
+     (fact-base:for-all
+      `(and (?id :cast-by ,user-id)
+	    (?id :vote ?)
+	    (?id :vote-score ?score))
+      :in *public-data*
+      :collect ?score))))
+
+(defmethod user-href ((qualified-user-name string))
   (destructuring-bind (site name) (cl-ppcre:split ":" qualified-user-name :limit 2)
     (let ((template (case (house::->keyword site)
 		      (:github "https://github.com/~a")
@@ -39,6 +57,8 @@
 	(if template
 	    (htm (:a :href (format nil template name) :target "_BLANK" (str name)))
 	    (str name))))))
+(defmethod user-href ((u user))
+  (user-href (qualified-name u)))
 
 (defun fetch-all-issues-from-github ()
   (loop for paper in (loop for i from 1
@@ -68,10 +88,14 @@
    :in *public-data*
    :collect (list :id ?id :title ?title :link ?uri)))
 
-(defun register-vote! (user-id paper-id &key (score 1))
-  (fact-base:insert! *public-data* (list user-id :vote paper-id))
-  (fact-base:insert! *public-data* (list user-id :vote-score score))
-  nil)
+(defun register-vote! (qualified-user-name paper-id &key (score 1))
+  (let ((user-id (get-or-create-user-id qualified-user-name)))
+    (fact-base:multi-insert!
+     *public-data*
+     `((:vote ,paper-id)
+       (:cast-by ,user-id)
+       (:vote-score ,score)))
+    nil))
 
 (defun submit-paper! (qualified-user-name paper-title paper-link)
   (let ((paper-id
