@@ -6,27 +6,41 @@
     (flet ((papers-list (papers)
 	     (htm (:ul (loop for p in papers
 			  for href = (gethash :link p)
-			  if href do (htm (:li (:a :href href (str (gethash :title p)))))
-			  else do (htm (:li (str (gethash :title p)))))))))
+			  for date = (universal->string (gethash :date p))
+			  do (htm
+			      (:li :paper-id (gethash :id p)
+				   :paper-title (gethash :title p)
+				   :paper-description (gethash :body p)
+				   :paper-date date
+				   (if href
+				       (htm (:a :href href (str (gethash :title p))))
+				       (htm (str (gethash :title p))))
+				   (when date (htm " - " (:span :class "date" (str date)))))))))))
       (htm (:html (:head
 		   (:title "home - Papers")
-		   (:script :type "text/javascript" :src "/js/base.js"))
+		   (:link :rel "stylesheet" :href "/css/main.css")
+		   (:script :type "text/javascript" :src "/js/base.js")
+		   (:script :type "text/javascript" :src "/js/main.js"))
 		  (:body
 		   (:div
-		    (:h1 "Reading Schedule")
+		    :class "papers-panel schedule"
+		    (:h3 "Reading Schedule")
 		    (papers-list (get-scheduled-papers)))
 		   (:div
-		    (:h3 "Future Papers")
-		    (papers-list (get-future-papers)))
-		   (:div
+		    :class "papers-panel history"
 		    (:h3 "Past Papers")
-		    (papers-list (get-past-papers)))))))))
+		    (papers-list (get-past-papers)))
+		   (:div
+		    :class "papers-panel future"
+		    (:h3 "Future Papers")
+		    (papers-list (get-future-papers)))))))))
 
 (define-handler (ballot) ()
   (with-html-output-to-string (s nil :prologue t :indent t)
     (:html
      (:head
       (:title "vote - Papers")
+      (:link :rel "stylesheet" :href "/css/main.css")
       (:script :type "text/javascript" :src "/js/base.js"))
      (:body
       (:form
@@ -308,6 +322,12 @@
 
 (define-handler (js/main.js :content-type "application/javascript") ()
   (ps (console.log "HELLO FROM JAVASCRIPTLAND!")))
+
+(define-handler (css/main.css :content-type "text/css") ()
+  (css `((body :font-family sans-serif)
+
+	 (.papers-panel :width 26% :margin-left 2% :float left)
+	 (".papers-panel ul" :margin 0px :padding 0px))))
 
 (define-json-handler (api/vote :method :post) ()
   (when (and (>= (votes-remaining (lookup :user session))

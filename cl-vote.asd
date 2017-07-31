@@ -17,6 +17,7 @@
                #:split-sequence)
   :serial t
   :components ((:file "package")
+	       (:file "util")
                (:file "model")
 	       (:file "authentication")
 	       (:file "cl-vote")))

@@ -43,6 +43,7 @@
      #'- +vote-total+
      (fact-base:for-all
       `(and (?id :cast-by ,user-id)
+	    (not (?id :counted nil))
 	    (?id :vote ?)
 	    (?id :vote-score ?score))
       :in *public-data*
@@ -107,6 +108,22 @@
 	(user-id (get-or-create-user-id qualified-user-name)))
     (fact-base:insert! *public-data* (list user-id :submitted paper-id))
     (list :id paper-id :title paper-title :link paper-link)))
+
+(defun schedule-paper! (qualified-user-name paper-id scheduled-day)
+  (unless (fact-base:for-all `(,paper-id :scheduled ?) :in *public-data* :collect t)
+    (let ((u (local-time:timestamp-to-universal scheduled-day)))
+      (fact-base:insert! *public-data* (list paper-id :scheduled-by qualified-user-name))
+      (fact-base:insert! *public-data* (list paper-id :scheduled u))
+      (fact-base:for-all
+       `(?id :vote ,paper-id) :in *public-data*
+       :do (fact-base:insert!
+	    *public-data* (list ?id :counted nil))))))
+
+(defun complete-paper! (qualified-user-name paper-id)
+  (unless (fact-base:for-all `(,paper-id :read ?) :in *public-data* :collect t)
+    (let ((u (local-time:timestamp-to-universal (local-time:now))))
+      (fact-base:insert! *public-data* (list paper-id :marked-read-by qualified-user-name))
+      (fact-base:insert! *public-data* (list paper-id :read u)))))
 
 (defun get-scheduled-papers ()
   (fact-base:for-all

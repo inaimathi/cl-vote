@@ -1,4 +1,5 @@
 ;;;; package.lisp
 
 (defpackage #:cl-vote
-  (:use #:cl #:house #:cl-who #:parenscript))
+  (:use #:cl #:house #:cl-css #:cl-who #:parenscript)
+  (:shadow #:%))
