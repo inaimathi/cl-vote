@@ -6,8 +6,8 @@
   :license "Specify license here"
   :depends-on (#:fact-base
                #:house
-               #:drakma
                #:alexandria
+	       #:anaphora
                #:yason
                #:cl-who
                #:cl-css
@@ -18,6 +18,7 @@
   :serial t
   :components ((:file "package")
 	       (:file "util")
+	       (:file "secrets")
                (:file "model")
 	       (:file "authentication")
 	       (:file "cl-vote")))

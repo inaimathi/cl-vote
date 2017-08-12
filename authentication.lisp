@@ -10,37 +10,25 @@
 	params)))
 
 (define-handler (auth/github/callback :content-type "text/plain") ((code :string))
-  (let* ((raw (drakma:http-request
-	       "https://github.com/login/oauth/access_token"
-	       :method :post
-	       :parameters (auth-params
-			    "client_id" +github-api-id+
-			    "client_secret" +github-api-secret+
-			    "code" code)))
-	 (params (house::parse-params (map 'string #'code-char raw))))
+  (let* ((raw (uiop:run-program
+	       (format nil "curl -X POST -d 'client_id=~a&client_secret=~a&code=~a' https://github.com/login/oauth/access_token"
+		       +github-api-id+ +github-api-secret+ code)
+	       :output :string))
+	 (params (house::parse-params :form-encoded raw)))
     (aif (cdr (assoc :access_token params))
-	 (let* ((raw (drakma:http-request
-		      "https://api.github.com/user"
-		      :parameters (list (cons "access_token" it))))
-		(u (yason:parse (map 'string #'code-char raw) :object-key-fn #'house::->keyword)))
+	 (let* ((raw (uiop:run-program
+		      (format nil "curl -d access_token=~a https://api.github.com/user" it)
+		      :output :string))
+		(u (yason:parse raw :object-key-fn #'house::->keyword)))
 	   (setf (lookup :user session)
 		 (make-instance
 		  'user
 		  :source :github :access-token it
 		  :name (gethash :login u) :url (gethash :html_url u)))
-	   (let ((dest (lookup :destination session)))
-	     (setf (lookup :destination session) nil)
-	     (redirect! (or dest "/"))))
+	   (redirect! "/one-page"))
 	 "AUTHENTICATION ERROR")))
 
-(defun auth-redirect-tree (test destination body)
-  `(cond (,test ,@body)
-	 (t
-	  (setf (lookup :destination session) ,destination)
-	  (redirect! "https://github.com/login/oauth/authorize?client_id=50798a26a6cdfa15a5b8"))))
-
-(defmacro logged-in-only (destination &body body)
-  (auth-redirect-tree '(lookup :user session) destination body))
-
-(defmacro organizers-only (thing destination &body body)
-  (auth-redirect-tree `(organizer-of? (lookup :user session) ,thing) destination body))
+(defmacro logged-in-only (&body body)
+  `(cond ((lookup :user session)
+	  ,@body)
+	 (t (redirect! (format nil "https://github.com/login/oauth/authorize?client_id=~a" +github-api-id+)))))

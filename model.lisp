@@ -34,20 +34,24 @@
 (defmethod get-or-create-user-id ((u user))
   (get-or-create-user-id (qualified-name u)))
 
+(defmethod active-votes ((qualified-user-name string))
+  (let ((user-id (get-or-create-user-id qualified-user-name)))
+    (fact-base:for-all
+     `(and (?id :cast-by ,user-id)
+	   (not (?id :counted nil))
+	   (?id :vote ?paper-id)
+	   (?id :vote-score ?score))
+     :in *public-data*
+     :collect (list ?paper-id qualified-user-name ?score))))
+(defmethod active-votes ((u user))
+  (active-votes (qualified-name u)))
+
 (defmethod votes-remaining (fixme)
   ;; Delete this once the user system is operational
   +vote-total+)
 (defmethod votes-remaining ((u user))
-  (let ((user-id (get-or-create-user-id u)))
-    (apply
-     #'- +vote-total+
-     (fact-base:for-all
-      `(and (?id :cast-by ,user-id)
-	    (not (?id :counted nil))
-	    (?id :vote ?)
-	    (?id :vote-score ?score))
-      :in *public-data*
-      :collect ?score))))
+  (let ((scores (mapcar #'third (active-votes u))))
+    (apply #'- +vote-total+ (or scores '(0)))))
 
 (defmethod user-href ((qualified-user-name string))
   (destructuring-bind (site name) (cl-ppcre:split ":" qualified-user-name :limit 2)

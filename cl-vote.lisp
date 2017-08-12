@@ -2,38 +2,40 @@
 ;;; "cl-vote" goes here. Hacks and glory await!
 
 (define-handler (/) ()
-  (with-html-output-to-string (s nil :prologue t :indent t)
-    (flet ((papers-list (papers)
-	     (htm (:ul (loop for p in papers
-			  for href = (gethash :link p)
-			  for date = (universal->string (gethash :date p))
-			  do (htm
-			      (:li :paper-id (gethash :id p)
-				   :paper-title (gethash :title p)
-				   :paper-description (gethash :body p)
-				   :paper-date date
-				   (if href
-				       (htm (:a :href href (str (gethash :title p))))
-				       (htm (str (gethash :title p))))
-				   (when date (htm " - " (:span :class "date" (str date)))))))))))
-      (htm (:html (:head
-		   (:title "home - Papers")
-		   (:link :rel "stylesheet" :href "/css/main.css")
-		   (:script :type "text/javascript" :src "/js/base.js")
-		   (:script :type "text/javascript" :src "/js/main.js"))
-		  (:body
-		   (:div
-		    :class "papers-panel schedule"
-		    (:h3 "Reading Schedule")
-		    (papers-list (get-scheduled-papers)))
-		   (:div
-		    :class "papers-panel history"
-		    (:h3 "Past Papers")
-		    (papers-list (get-past-papers)))
-		   (:div
-		    :class "papers-panel future"
-		    (:h3 "Future Papers")
-		    (papers-list (get-future-papers)))))))))
+  (logged-in-only
+    (with-html-output-to-string (s nil :prologue t :indent t)
+      (flet ((papers-list (papers)
+	       (htm (:ul (loop for p in papers
+			    for href = (gethash :link p)
+			    for date = (universal->string (gethash :date p))
+			    do (htm
+				(:li :paperId (gethash :id p)
+				     :paperTitle (gethash :title p)
+				     :paperDescription (gethash :body p)
+				     :paperDate date
+				     (if href
+					 (htm (:a :href href (str (gethash :title p))))
+					 (htm (str (gethash :title p))))
+				     (when date (htm " - " (:span :class "date" (str date)))))))))))
+	(htm (:html (:head
+		     (:title "home - Papers")
+		     (:link :rel "stylesheet" :href "/css/main.css")
+		     (:script :type "text/javascript" :src "/js/base.js")
+		     (:script :type "text/javascript" :src "/js/main.js"))
+		    (:body
+		     (:p (fmt "Hello there, ~a" (lookup :user session)))
+		     (:div
+		      :class "papers-panel schedule"
+		      (:h3 "Reading Schedule")
+		      (papers-list (get-scheduled-papers)))
+		     (:div
+		      :class "papers-panel history"
+		      (:h3 "Past Papers")
+		      (papers-list (get-past-papers)))
+		     (:div
+		      :class "papers-panel future"
+		      (:h3 "Future Papers")
+		      (papers-list (get-future-papers))))))))))
 
 (define-handler (ballot) ()
   (with-html-output-to-string (s nil :prologue t :indent t)
@@ -204,11 +206,20 @@
 	       (replace "<" "&lt;")
 	       (replace ">" "&gt;"))))
 
-    (defun dom-append (elem markup)
+    (defun -make-elem (markup)
       (let ((new-content (chain document (create-element "span"))))
 	(setf (@ new-content inner-h-t-m-l) markup)
+	new-content))
+
+    (defun dom-append (elem markup)
+      (let ((new-content (-make-elem markup)))
 	(loop while (@ new-content first-child)
 	   do (chain elem (append-child (@ new-content first-child))))))
+
+    (defun dom-prepend (elem markup)
+      (let ((new-content (-make-elem markup)))
+	(loop while (@ new-content last-child)
+	   do (chain elem (prepend (@ new-content last-child))))))
 
     (defun dom-replace (elem markup)
       (let ((new-content (chain document (create-element "span")))
@@ -321,7 +332,12 @@
 	stream))))
 
 (define-handler (js/main.js :content-type "application/javascript") ()
-  (ps (console.log "HELLO FROM JAVASCRIPTLAND!")))
+  (ps (dom-ready
+       (lambda ()
+	 (console.log
+	  (map (lambda (elem)
+		 (dom-prepend elem "<p>Testing testing!</p>"))
+	       (by-selector-all ".papers-panel.future li")))))))
 
 (define-handler (css/main.css :content-type "text/css") ()
   (css `((body :font-family sans-serif)
@@ -335,8 +351,31 @@
     (loop for (k . v) in (parameters request)
        collect (cons (parse-integer (symbol-name k)) 1))))
 
+(define-json-handler (api/user/-user-name=string/votes) ()
+  (cons (cons :remaining (votes-remaining user-name))
+	(get-active-votes-for user-name)))
+
 (define-handler (api/paper :method :put :content-type "application/json") ()
   (list :todo "Submit a new paper for voting"))
 
 (define-handler (api/paper :method :delete :content-type "application/json") ()
   (list :todo "Withdraw a paper from being voted on"))
+
+(define-json-handler (api/paper :method :get) ()
+  (list :todo "Get the listing of { past, scheduled, future } papers. Each slot is [{title, link, description, submitter, votes}]"))
+
+(defun start! (port &key (host usocket:*wildcard-host*))
+  (let ((s *standard-output*))
+    (setf *http-port* port
+	  *thread*
+	  (bt:make-thread
+	   (lambda ()
+	     (format s "Listening on ~{~a~^.~}:~a...~%" (coerce host 'list) port)
+	     (house:start port host))
+	   :name "papers-http-thread"))
+    nil))
+
+(defun stop! ()
+  (bt:destroy-thread *thread*)
+  (bt:destroy-thread *thread*)
+  (setf *thread* nil))
