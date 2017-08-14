@@ -1,14 +1,45 @@
 (in-package #:cl-vote)
 
 (define-handler (js/main.js :content-type "application/javascript") ()
-  (ps (dom-ready
-       (lambda ()
-	 (console.log
-	  ;; (map (lambda (elem)
-	  ;; 	 (dom-prepend elem "<p>Testing testing!</p>"))
-	  ;;      (by-selector-all ".papers-panel.future li"))
-	  "Hello there!"
-	  )))))
+  (ps
+    (defvar +user+ nil)
+    (defvar +papers+ nil)
+
+    (defun paper-template (paper &key vote-button?)
+      (let ((href (@ paper link))
+	    (date (@ paper date)))
+	(who-ps-html
+	 (:li
+	  (when vote-button?
+	    (who-ps-html (:a :href (+ "/api/vote/" (@ paper id)) "Vote")))
+	  (if href
+	      (who-ps-html (:a :href href (@ paper title)))
+	      (@ paper title))
+	  (when date (who-ps-html " - " (:span :class "date" date)))))))
+
+    (defun paper-list-template (papers &key vote-button?)
+      (who-ps-html
+       (:ul :class "paper-list"
+	    (join (loop for p in papers
+		     collect (paper-template p :vote-button? vote-button?))))))
+
+    (defun paper-panel-template (title extra-class papers &key vote-button?)
+      (who-ps-html
+       (:div :class (+ "paper-panel " extra-class)
+	     (:h3 title)
+	     (paper-list-template papers :vote-button? vote-button?))))
+
+    (dom-ready
+     (lambda ()
+       (get/json
+	"/api/self" (create)
+	(lambda (data) (setf +user+ data)))
+       (get/json
+	"/api/paper" (create)
+	(lambda (data)
+	  (setf +papers+ data)
+	  (dom-set (by-selector ".body")
+		   (paper-panel-template "Future Papers" "future" (@ data future)))))))))
 
 (define-handler (js/base.js :content-type "application/javascript") ()
   (ps
@@ -242,6 +273,9 @@
 		    (callback result)))))
 	(chain req (open :GET (if params (+ uri "?" (obj->params params)) uri) t))
 	(chain req (send))))
+
+    (defun get/json (uri params callback)
+      (get uri params (lambda (raw) (callback (string->obj raw)))))
 
     (defun post (uri params on-success on-fail)
       (let ((req (new (-x-m-l-http-request)))

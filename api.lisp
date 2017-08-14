@@ -1,5 +1,12 @@
 (in-package #:cl-vote)
 
+(define-json-handler (api/self) ()
+  (aif (lookup :user session)
+       (hash :source (source it)
+	     :name (name it)
+	     :url (url it))
+       (hash)))
+
 (define-json-handler (api/vote :method :post) ()
   (when (and (>= (votes-remaining (lookup :user session))
 		 (length parameters)))
@@ -17,4 +24,6 @@
   (list :todo "Withdraw a paper from being voted on"))
 
 (define-json-handler (api/paper :method :get) ()
-  (list :todo "Get the listing of { past, scheduled, future } papers. Each slot is [{title, link, description, submitter, votes}]"))
+  (hash :past (get-past-papers)
+	:scheduled (get-scheduled-papers)
+	:future (get-future-papers)))

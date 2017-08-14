@@ -7,12 +7,6 @@
    (merge-pathnames "cl-vote.base" (user-homedir-pathname))
    :in-memory? t))
 
-(defun hash (&rest k/v-pairs)
-  (let ((h (make-hash-table)))
-    (loop for (k v) on k/v-pairs by #'cddr
-       do (setf (gethash k h) v))
-    h))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; Users
 (defclass user ()
@@ -33,6 +27,12 @@
        *public-data* :user name)))
 (defmethod get-or-create-user-id ((u user))
   (get-or-create-user-id (qualified-name u)))
+
+(defmethod bless-user! ((qualified-user-name string))
+  (let ((user-id (get-or-create-user-id qualified-user-name)))
+    (fact-base:insert! *public-data* (list user-id :caballer nil))))
+(defmethod bless-user! ((u user))
+  (bless-user! (qualified-name u)))
 
 (defmethod active-votes ((qualified-user-name string))
   (let ((user-id (get-or-create-user-id qualified-user-name)))
@@ -131,22 +131,31 @@
 
 (defun get-scheduled-papers ()
   (fact-base:for-all
-   (and (?id :paper nil) (?id :title ?title) (?id :link ?link)
+   (and (?id :paper nil) (?id :title ?title) (?id :link ?link) (?uid :submitted ?id) (?uid :user ?user-name)
 	(?id :scheduled ?date) (not (?id :read ?)))
    :in *public-data*
-   :collect (hash :title (string-trim "\"'\"" ?title) :link ?link :id ?id :date ?date)))
+   :collect (hash :title (string-trim "\"'\"" ?title) :link ?link :id ?id
+		  :user ?user-name :date ?date)))
 
 (defun get-past-papers ()
   (fact-base:for-all
-   (and (?id :paper nil) (?id :title ?title) (?id :link ?link)
+   (and (?id :paper nil) (?id :title ?title) (?id :link ?link) (?uid :submitted ?id) (?uid :user ?user-name)
 	(?id :read ?date))
    :in *public-data*
-   :collect (hash :title (string-trim "\"'\"" ?title) :link ?link :id ?id :date ?date)))
+   :collect (hash :title (string-trim "\"'\"" ?title) :link ?link :id ?id :user ?user-name :date ?date)))
+
+(defun get-paper-votes (paper-id)
+  (fact-base:for-all
+   `(and (,paper-id :paper nil) (?id :vote ,paper-id) (?id :cast-by ?uid) (?uid :caballer nil) (?id :vote-score ?score)
+	 (?uid :user ?user-name))
+   :in *public-data*
+   :collect (hash :user ?user-name :score ?score)))
 
 (defun get-future-papers ()
   (fact-base:for-all
    (and (?id :paper nil)
 	(not (?id :read ?)) (not (?id :scheduled ?))
-	(?id :title ?title) (?id :link ?link))
+	(?uid :submitted ?id) (?uid :user ?user-name) (?id :title ?title) (?id :link ?link))
    :in *public-data*
-   :collect (hash :title (string-trim "\"'\"" ?title) :link ?link :id ?id)))
+   :collect (hash :title (string-trim "\"'\"" ?title) :link ?link :id ?id :user ?user-name
+		  :votes (get-paper-votes ?id))))

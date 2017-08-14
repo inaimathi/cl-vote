@@ -2,7 +2,7 @@
 
 (defpackage #:cl-vote
   (:use #:cl #:house #:cl-css #:cl-who #:parenscript)
-  (:import-from #:anaphora :aif :it)
+  (:import-from #:anaphora :aif :awhen :it)
   (:shadow #:%))
 
 (in-package :cl-vote)
