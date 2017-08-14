@@ -21,4 +21,5 @@
 	       (:file "secrets")
                (:file "model")
 	       (:file "authentication")
+	       (:file "api") (:file "css") (:file "js")
 	       (:file "cl-vote")))

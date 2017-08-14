@@ -17,15 +17,19 @@
 	 (params (house::parse-params :form-encoded raw)))
     (aif (cdr (assoc :access_token params))
 	 (let* ((raw (uiop:run-program
-		      (format nil "curl -d access_token=~a https://api.github.com/user" it)
+		      (format nil "curl https://api.github.com/user?access_token=~a" it)
 		      :output :string))
 		(u (yason:parse raw :object-key-fn #'house::->keyword)))
+	   (format t "GOT USER!~%  ~s~%  ~s ~s~%" (alexandria:hash-table-alist u) (gethash :login u) (gethash :html_url u))
 	   (setf (lookup :user session)
 		 (make-instance
 		  'user
 		  :source :github :access-token it
 		  :name (gethash :login u) :url (gethash :html_url u)))
-	   (redirect! "/one-page"))
+	   (format t "SET USER IN SESSION~%")
+	   (format t "TOKEN: ~a~%" (house::token session))
+	   (format t "REDIRECTING...~%")
+	   (redirect! "/"))
 	 "AUTHENTICATION ERROR")))
 
 (defmacro logged-in-only (&body body)
