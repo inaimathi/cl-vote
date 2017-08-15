@@ -11,7 +11,7 @@
 	(who-ps-html
 	 (:li
 	  (when vote-button?
-	    (who-ps-html (:a :href (+ "/api/vote/" (@ paper id)) "Vote")))
+	    (who-ps-html (:a :href (+ "/api/vote/" (@ paper id)) "[Vote]") " - "))
 	  (if href
 	      (who-ps-html (:a :href href (@ paper title)))
 	      (@ paper title))
@@ -29,6 +29,12 @@
 	     (:h3 title)
 	     (paper-list-template papers :vote-button? vote-button?))))
 
+    (defun paper-panels-template (data)
+      (join
+       (list (paper-panel-template "Reading List" "scheduled" (or (@ data scheduled) (-array)))
+	     (paper-panel-template "Past Papers" "past" (or (@ data past) (-array)))
+	     (paper-panel-template "Future Papers" "future" (or (@ data future) (-array)) :vote-button? true))))
+
     (dom-ready
      (lambda ()
        (get/json
@@ -38,8 +44,7 @@
 	"/api/paper" (create)
 	(lambda (data)
 	  (setf +papers+ data)
-	  (dom-set (by-selector ".body")
-		   (paper-panel-template "Future Papers" "future" (@ data future)))))))))
+	  (dom-set (by-selector ".body") (paper-panels-template data))))))))
 
 (define-handler (js/base.js :content-type "application/javascript") ()
   (ps
