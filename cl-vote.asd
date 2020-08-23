@@ -1,25 +1,32 @@
 ;;;; cl-vote.asd
 
 (asdf:defsystem #:cl-vote
-  :description "Describe cl-vote here"
-  :author "Your Name <your.name@example.com>"
-  :license "Specify license here"
-  :depends-on (#:fact-base
-               #:house
-               #:alexandria
-	       #:anaphora
-               #:yason
-               #:cl-who
-               #:cl-css
-               #:parenscript
-               #:local-time
-               #:cl-ppcre
-               #:split-sequence)
+  :description "A tool for collective decision making"
+  :author "inaimathi<leo.zovic@google.com>"
+  :license "GPL3"
+  :version "0.0.1"
   :serial t
-  :components ((:file "package")
-	       (:file "util")
-	       (:file "secrets")
-               (:file "model")
-	       (:file "authentication")
-	       (:file "api") (:file "css") (:file "js")
-	       (:file "cl-vote")))
+  :depends-on (#:clj
+	       #:cl-base32 #:cl-one-time-passwords #:cl-qrencode #:ironclad
+	       #:cl-who #:parenscript #:cl-css
+	       #:fact-base #:hunchentoot)
+  :components ((:module
+		src :components
+		((:file "package")
+		 (:file "authentication")
+		 (:file "cl-vote")))))
+
+(asdf:defsystem #:cl-vote-test
+  :description "Test suite for :cl-vote"
+  :author "inaimathi<leo.zovic@google.com>"
+  :license "GPL3"
+  :serial t
+  :depends-on (#:cl-vote #:test-utils)
+  :defsystem-depends-on (#:prove-asdf)
+  :components ((:module
+                test :components
+                ((:file "package")
+                 (:test-file "cl-vote"))))
+  :perform (test-op
+	    :after (op c)
+	    (funcall (intern #.(string :run) :prove) c)))
