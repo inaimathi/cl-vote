@@ -6,6 +6,18 @@
       totp:*time-step-in-seconds* 30
       hotp:*digits* 8)
 
+(defparameter *generator*
+  (session-token:make-generator
+   :alphabet "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+   :token-length 6))
+
+(defun mk-recovery-token ()
+  (format
+   nil "~a-~a-~a"
+   (funcall *generator*)
+   (funcall *generator*)
+   (funcall *generator*)))
+
 (defun mk-otp-secret ()
   (ironclad:byte-array-to-hex-string (crypto:random-data 256)))
 
