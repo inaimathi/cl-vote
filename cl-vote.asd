@@ -14,6 +14,7 @@
 		src :components
 		((:file "package")
 		 (:file "authentication")
+		 (:file "model")
 		 (:file "cl-vote")))))
 
 (asdf:defsystem #:cl-vote-test

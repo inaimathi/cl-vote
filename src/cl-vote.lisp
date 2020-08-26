@@ -4,23 +4,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; model
-(defparameter *base* (fact-base:base! #P "cl-vote.base"))
-(ensure-directories-exist "qrcodes")
-
-(defun user-by-name (user-name)
-  (first
-   (fact-base:for-all
-    `(and (?id :user t) (?id :name ,user-name) (?id :secret ?secret))
-    :in *base* :collect {:id ?id :name user-name :secret ?secret})))
-
-(defun register-user! (user-name)
-  (fact-base:multi-insert!
-   *base* `((:user t) (:name ,user-name) (:secret ,(mk-otp-secret)))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; handlers
 (defmacro page-template (&body contents)
   `(who:with-html-output-to-string (html)
@@ -43,6 +26,8 @@
   (if-let (user (hunchentoot:session-value :user))
     (page-template
       (:p "Hello, " (:code (cl-who:str (lookup user :name))) "!")
+      ;; (:p "Your recovery token is "
+      ;; 	  (:code (cl-who:str (lookup user :recovery-token))) " Please write it down in case you lose access to your authenticator app.")
       (:img :src "/user/qrcode"))
     (hunchentoot:redirect "/auth/login")))
 
@@ -63,7 +48,7 @@
 (hunchentoot:define-easy-handler (auth/register :uri "/auth/register") ()
   (page-template
     (:form :action "/action/register" :method :post
-	   (:input :type "text" :name "name")
+	   (:input :type "text" :name "name" :placeholder "User Name")
 	   (:input :type "submit" :value "Register"))))
 
 (hunchentoot:define-easy-handler (action/login :uri "/action/login") (name token next)
@@ -76,10 +61,27 @@
 
 (hunchentoot:define-easy-handler (auth/login :uri "/auth/login") ()
   (page-template
-    (:form :action "/action/login" :method :post
-	   (:input :type "text" :name "name")
-	   (:input :type "text" :name "token")
-	   (:input :type "submit" :value "Login"))))
+    (:form
+     :action "/action/login" :method :post
+     (:input :type "text" :name "name" :placeholder "User Name")
+     (:input :type "text" :name "token" :placeholder "Auth Token")
+     (:input :type "submit" :value "Login"))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; elections
+(hunchentoot:define-easy-handler (action/election/create :uri "/action/election/create") (election)
+  :todo)
+(hunchentoot:define-easy-handler (election/create :uri "/election/create") ()
+  :todo)
+
+(hunchentoot:define-easy-handler (action/election/vote :uri "/action/election/vote") (ballot)
+  :todo)
+(hunchentoot:define-easy-handler (election/vote :uri "/election/vote") (election-id)
+  :todo)
+
+(hunchentoot:define-easy-handler (election :uri "/election") (election-id)
+  :todo)
+(hunchentoot:define-easy-handler (election/manage :uri "/election/manage") (election-id) :todo)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; main page
