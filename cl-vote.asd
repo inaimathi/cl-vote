@@ -7,7 +7,7 @@
   :version "0.0.1"
   :serial t
   :depends-on (#:clj
-	       #:session-token #:cl-base32 #:cl-one-time-passwords #:cl-qrencode #:ironclad
+	       #:tomb #:session-token #:cl-base32 #:cl-one-time-passwords #:cl-qrencode #:ironclad
 	       #:cl-who #:parenscript #:cl-css
 	       #:fact-base #:hunchentoot)
   :components ((:module

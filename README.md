@@ -25,6 +25,7 @@ We actually kind of want to store these the same way as passwords. Specifically,
 	- up/down (-1, 0 or 1)
 	- y/n (0 or 1)
 	- point-distribution (number of points) (give points back when candidates are removed)
+	=> (:range Min Max) (:points Int)
 
 - candidates
 	- fixed list
@@ -37,6 +38,7 @@ We actually kind of want to store these the same way as passwords. Specifically,
 	- close by admin
 	- always open
 	- all voters voted
+	=> (:date Date) (:vote-count Int) (:all-voted) (:open)
 
 - voters
 	- fixed list

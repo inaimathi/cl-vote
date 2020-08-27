@@ -8,14 +8,21 @@
 (defun user-by-name (user-name)
   (first
    (fact-base:for-all
-    `(and (?id :user t) (?id :name ,user-name) (?id :secret ?secret))
-    :in *base* :collect {:id ?id :name user-name :secret ?secret})))
+       `(and (?id :user t) (?id :name ,user-name) (?id :secret ?secret) (?id :recovery-token ?token))
+    :in *base* :collect {:id ?id :name user-name :secret ?secret :recovery-token ?token})))
+
+(defun fresh-recovery-token! (user-id token)
+  (fact-base:for-all
+      `(,user-id :recovery-token ?token)
+    :in *base* :do (fact-base:delete! *base* (list user-id :recovery-token ?token)))
+  (fact-base:insert!
+   *base* (list user-id :recovery-token (tomb:entomb token))))
 
 (defun register-user! (user-name)
   (fact-base:multi-insert!
    *base* `((:user t)
 	    (:name ,user-name)
-	    ;; (:recovery-token ,(mk-recovery-token))
+	    (:recovery-token nil)
 	    (:secret ,(mk-otp-secret)))))
 
 (defun election-by-id (id)

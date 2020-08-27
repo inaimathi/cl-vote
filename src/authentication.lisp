@@ -44,4 +44,6 @@
      :mode :byte)))
 
 (defun user-authorized? (user token)
-  (= (totp:totp (user-secret user)) (parse-integer token)))
+  (ignore-errors
+    (= (totp:totp (user-secret user))
+       (parse-integer token))))
