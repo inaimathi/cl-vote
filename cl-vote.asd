@@ -9,7 +9,7 @@
   :depends-on (#:clj
 	       #:tomb #:session-token #:cl-base32 #:cl-one-time-passwords #:cl-qrencode #:ironclad
 	       #:cl-who #:parenscript #:cl-css
-	       #:fact-base #:hunchentoot)
+	       #:fact-base #:house)
   :components ((:module
 		src :components
 		((:file "package")

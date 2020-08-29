@@ -11,6 +11,9 @@
        `(and (?id :user t) (?id :name ,user-name) (?id :secret ?secret) (?id :recovery-token ?token))
     :in *base* :collect {:id ?id :name user-name :secret ?secret :recovery-token ?token})))
 
+(defun list-users ()
+  (fact-base:for-all (?id :name ?user-name) :in *base* :collect {:id ?id :name ?user-name}))
+
 (defun fresh-recovery-token! (user-id token)
   (fact-base:for-all
       `(,user-id :recovery-token ?token)
@@ -42,7 +45,7 @@
 				:decision-time ?decision
 				:candidates candidates}))))
 
-(defun create-election! (title &key candidates (ballot-type '(:range 0 5)) (decision-time :open))
+(defun create-election! (creator-id title &key candidates (ballot-type '(:range 0 5)) (decision-time :open))
 
   (assert (or (and (== :range (first ballot-type))
 		   (destructuring-bind (_ a b) ballot-type
@@ -60,6 +63,7 @@
 
   (let ((id (fact-base:multi-insert!
 	     *base* `((:election t)
+		      (:creator ,creator-id)
 		      (:title ,title)
 		      (:ballot-type ,ballot-type)
 		      (:decision-time ,decision-time)))))
