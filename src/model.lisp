@@ -12,7 +12,9 @@
     :in *base* :collect {:id ?id :name user-name :secret ?secret :recovery-token ?token})))
 
 (defun list-users ()
-  (fact-base:for-all (?id :name ?user-name) :in *base* :collect {:id ?id :name ?user-name}))
+  (fact-base:for-all
+      (and (?id :user t) (?id :name ?user-name))
+    :in *base* :collect {:id ?id :name ?user-name}))
 
 (defun fresh-recovery-token! (user-id token)
   (fact-base:for-all
@@ -27,6 +29,11 @@
 	    (:name ,user-name)
 	    (:recovery-token nil)
 	    (:secret ,(mk-otp-secret)))))
+
+(defun list-elections ()
+  (fact-base:for-all
+      (and (?id :election t) (?id :name ?user-name))
+    :in *base* :collect {:id ?id :name }))
 
 (defun election-by-id (id)
   (let ((candidates (fact-base:for-all

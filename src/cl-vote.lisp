@@ -40,8 +40,8 @@
       (:img :src "/user/qrcode"))
     (house:redirect! "/auth/login")))
 
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;;;;;;;;;; login and registration
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;; login and registration
 (house:define-handler (action/logout) ()
   (setf (house:lookup :user house:session) nil)
   (house:redirect! "/"))
@@ -80,9 +80,8 @@
       (:li (:input :type "text" :name "token" :placeholder "Auth Token"))
       (:li (:input :type "submit" :value "Login"))))))
 
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;;;;; elections
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; elections
 (house:define-handler (action/election/create) (title ballot-type min max points candidates)
   (assert (house:lookup :user house:session))
   (assert (contains? #{"points" "range"} ballot-type))
@@ -120,20 +119,34 @@
        (:li (:textarea :name "candidates" :placeholder "Either comma separated or one-per-line"))
        (:li (:input :type "submit" :value "Create")))))))
 
-(house:define-handler (action/election/vote) ((ballot json))
-  :todo)
+(house:define-handler (action/election/vote) ((election-id string) (ballot json))
+  (format nil "~a" (house:parameters house:request)))
 
-;; (defun ballot (election)
-;;   (let ((ballot-type (lookup election :ballot-type)))
-;;     (cond ((= (first ballot-type) :points))
-;; 	  ((= (first ballot-type) :range)))))
-
-(house:define-handler (election) (election-id)
+(house:define-handler (election) ((election-id string))
   (assert election-id)
   (assert (house:lookup :user house:session))
-  (page-template
-    (cl-who:htm
-     (:pre (cl-who:str (election-by-id (parse-integer election-id)))))))
+  (let* ((election (election-by-id (parse-integer election-id)))
+	 (ballot-type (lookup election :ballot-type)))
+    (page-template
+      (cl-who:htm
+       (:form :action "/action/election/vote")
+       (:ul :class "ballot"
+	    (mapcar
+	     (cond
+	       ((== (first ballot-type) :points)
+		(lambda (candidate)
+		  (let ((name (lookup candidate :name)))
+		    (cl-who:htm
+		     (:li (:input :type "range" :name name)
+			  (:label :for name (cl-who:str name)))))))
+	       ((== (first ballot-type) :range)
+		(lambda (candidate)
+		  (let ((name (lookup candidate :name)))
+		    (cl-who:htm
+		     (:li (:input :type "checkbox" :name name)
+			  (:label :for name (cl-who:str name))))))))
+	     (lookup election :candidates)))))))
+
 (house:define-handler (election/manage) (election-id) :todo)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -150,4 +163,4 @@
 		   (:li (:a :href "/auth/login" "Login"))
 		   (:li (:a :href "/auth/register" "Register")))))))
 
-(house:start 5555)
+;; (house:start 5555)
