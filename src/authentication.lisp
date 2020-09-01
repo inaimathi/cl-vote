@@ -4,7 +4,7 @@
 (setf *random-state* (make-random-state t)
       crypto:*prng* (crypto:make-prng :fortuna)
       totp:*time-step-in-seconds* 30
-      hotp:*digits* 8)
+      hotp:*digits* 6)
 
 (defparameter *generator*
   (session-token:make-generator

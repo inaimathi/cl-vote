@@ -11,12 +11,11 @@ This is a tool for collective decision making.
 	- The login handler should wait to return some amount of time based on hammer number
 	- After 25(more? less?) attempts, stop attempting to check login for that name from that device for some amount of time
 
-#### Recovery codes
+- Add result computation to elections
 
-We actually kind of want to store these the same way as passwords. Specifically, we want to
-1. Generate them
-2. Send them to the user
-3. Once accepted, hash them and store the hash to the DB
+- Add admin panel for elections
+
+- Make it at least _a little_ pretty
 
 #### Ways to vary elections
 - ballot types

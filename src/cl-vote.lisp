@@ -5,8 +5,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; handlers
+(defmacro partial (&body contents)
+  `(cl-who:with-html-output (*standard-output*)
+     (cl-who:htm ,@contents)))
+
+(defun sanitized-name (candidate-title)
+  (substitute
+   #\- #\space
+   (string-trim
+    " \n" (string-downcase
+	   candidate-title))))
+
 (defmacro page-template (&body contents)
-  `(who:with-html-output-to-string (html)
+  `(who:with-html-output-to-string (*standard-output*)
      (:html
       (:head)
       (:body
@@ -122,29 +133,56 @@
 (house:define-handler (action/election/vote) ((election-id string) (ballot json))
   (format nil "~a" (house:parameters house:request)))
 
+(defun candidate-input (ballot-type candidate)
+  (let* ((b-type (first ballot-type))
+	 (min (second ballot-type))
+	 (max (third ballot-type))
+	 (points (second ballot-type))
+	 (name (lookup candidate :name))
+	 (safe (sanitized-name name)))
+    (cl-who:with-html-output (*standard-output*)
+      (cond ((and (== b-type :points) (= 1 points))
+	     (cl-who:htm
+	      (:li (:input :type "radio" :name "vote" :value safe)
+		   (:label :for "vote" (cl-who:str name)))))
+	    ((and (== b-type :range) (= min 0) (= max 1))
+	     (cl-who:htm
+	      (:li (:input :type "checkbox" :name safe)
+		   (:label :for safe (cl-who:str name)))))
+	    ((and (== b-type :points) (>= 5 points))
+	     (cl-who:htm
+	      (:li (loop for i from 0 repeat (+ points 1)
+		      do (cl-who:htm (:input :type "radio" :name safe :value i)))
+		   (:label :for safe (cl-who:str name)))))
+	    ((== b-type :points)
+	     (cl-who:htm
+	      (:li (:input :type "text" :name safe :value "0")
+		   (:label :for safe (cl-who:str name)))))
+	    ((and (== b-type :range) (= min -1) (= max 1))
+	     (cl-who:htm
+	      (:li "TODO - up and downvote arrows")))
+	    ((and (== b-type :range) (> 10 (- max min)))
+	     (cl-who:htm
+	      (:li (loop for i from min to max
+		      do (cl-who:htm (:input :type "radio" :name safe :value i)))
+		   (:label :for safe (cl-who:str name)))))
+	    ((== b-type :range)
+	     (cl-who:htm
+	      (:li (:input :type "range" :name safe :min min :max max :value "0")
+		   (:label :for safe (cl-who:str name)))))))))
+
 (house:define-handler (election) ((election-id string))
-  (assert election-id)
   (assert (house:lookup :user house:session))
   (let* ((election (election-by-id (parse-integer election-id)))
 	 (ballot-type (lookup election :ballot-type)))
     (page-template
-      (cl-who:htm
-       (:form :action "/action/election/vote")
+      (:h3 (cl-who:str (lookup election :title)))
+      (:form
+       :action "/action/election/vote"
        (:ul :class "ballot"
 	    (mapcar
-	     (cond
-	       ((== (first ballot-type) :points)
-		(lambda (candidate)
-		  (let ((name (lookup candidate :name)))
-		    (cl-who:htm
-		     (:li (:input :type "range" :name name)
-			  (:label :for name (cl-who:str name)))))))
-	       ((== (first ballot-type) :range)
-		(lambda (candidate)
-		  (let ((name (lookup candidate :name)))
-		    (cl-who:htm
-		     (:li (:input :type "checkbox" :name name)
-			  (:label :for name (cl-who:str name))))))))
+	     (lambda (cand)
+	       (candidate-input ballot-type cand))
 	     (lookup election :candidates)))))))
 
 (house:define-handler (election/manage) (election-id) :todo)
