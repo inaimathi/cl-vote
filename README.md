@@ -11,11 +11,25 @@ This is a tool for collective decision making.
 	- The login handler should wait to return some amount of time based on hammer number
 	- After 25(more? less?) attempts, stop attempting to check login for that name from that device for some amount of time
 
+- Allow actual voting
+
+- Add ranking ballot
+
 - Add result computation to elections
 
 - Add admin panel for elections
+	- Add/remove candidates (and possibly recompute points allowed)
+	- Change decision date
+	- Close election
+	- Change ballot type?
 
 - Make it at least _a little_ pretty
+
+- List public elections
+
+- Make the model actually write a database to disk
+
+- Add option to allow voters to nominate candidates
 
 #### Ways to vary elections
 - ballot types
